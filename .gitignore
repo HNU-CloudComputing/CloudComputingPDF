@@ -1,5 +1,6 @@
 # --- 忽略私有拉取的 LaTeX 源码 ---
 /CCBook/
+/chapters/
 
 # --- 忽略本地 LaTeX 编译缓存及 PDF 中间产物 ---
 *.aux

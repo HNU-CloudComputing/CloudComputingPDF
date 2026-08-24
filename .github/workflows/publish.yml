@@ -27,27 +27,31 @@ jobs:
           repository: 'HNU-CloudComputing/CCBook'
           token: ${{ secrets.NOTIFY_PAT }}
           path: 'CCBook'
+          ref: 'main'
+          fetch-depth: 0
 
-      # 3. 极速合并编译：单次容器运行，连续编译全书与所有子章节
+      # 3. 极速合并编译：使用官方容器一次性编译全书与所有子章节
       - name: 🚀 统一编译 LaTeX (全书 + 所有章节)
-        uses: xu-cheng/latex-action@v3
-        continue-on-error: true
+        uses: docker://ghcr.io/xu-cheng/texlive-full:latest
         with:
-          run: |
-            # 编译完整版
-            cd CCBook
-            xelatex -interaction=nonstopmode main.tex || true
-            xelatex -interaction=nonstopmode main.tex || true
+          args: |
+            bash -c '
+              set -e
+              echo "===> 正在编译完整版 main.tex..."
+              cd CCBook
+              xelatex -interaction=nonstopmode main.tex || true
+              xelatex -interaction=nonstopmode main.tex || true
 
-            # 编译各章节独立 PDF (通过 export 变量指定 TEXINPUTS 包含上级宏包)
-            cd pdf_export
-            export TEXINPUTS=".:..:"
-            for tex in export_chapter_intro.tex export_chapter_{1..6}.tex; do
-              if [ -f "$tex" ]; then
-                echo "正在编译章节: $tex"
-                xelatex -interaction=nonstopmode "$tex" || true
-              fi
-            done
+              echo "===> 正在编译各独立章节..."
+              cd pdf_export
+              export TEXINPUTS=".:..:"
+              for tex in export_chapter_intro.tex export_chapter_1.tex export_chapter_2.tex export_chapter_3.tex export_chapter_4.tex export_chapter_5.tex export_chapter_6.tex; do
+                if [ -f "$tex" ]; then
+                  echo "正在编译: $tex"
+                  xelatex -interaction=nonstopmode "$tex" || true
+                fi
+              done
+            '
 
       # 4. 安装工具并进行多核并行压制
       - name: ⚡ 提取目录并多进程并发优化 PDF
@@ -94,7 +98,7 @@ jobs:
 
           ls -la _site
 
-      # 7. 🚀 自动发布到 gh-pages 分支（若分支不存在会自动创建）
+      # 7. 🚀 自动发布到 gh-pages 分支
       - name: 🚀 发布至 gh-pages 分支
         uses: peaceiris/actions-gh-pages@v4
         with:

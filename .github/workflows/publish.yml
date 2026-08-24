@@ -2,7 +2,7 @@ name: LaTeX 自动化编译测试 (不发布线上)
 
 on:
   push:
-    branches: test-latex-build
+    branches: main
 
 jobs:
   test-build:

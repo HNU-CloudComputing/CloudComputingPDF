@@ -30,8 +30,8 @@ jobs:
           ref: 'main'
           fetch-depth: 0
 
-      # 3. 动态组装并编写编译脚本
-      - name: 📝 准备编译脚本 (全书 + 原生独立分章节)
+      # 3. 准备编译脚本 (全书 + 原生独立分章节)
+      - name: 📝 准备编译脚本
         run: |
           cat << 'EOF' > run_latex.sh
           #!/bin/bash
@@ -44,16 +44,7 @@ jobs:
           
           mkdir -p generated_chapters
           
-          echo "===> 2. 动态生成并编译独立目录 (TOC)..."
-          cat << 'TEX' > generated_chapters/gen_toc.tex
-          \input{preamble.tex}
-          \begin{document}
-          \tableofcontents
-          \end{document}
-          TEX
-          xelatex -interaction=nonstopmode generated_chapters/gen_toc.tex || true
-          
-          echo "===> 3. 动态生成并编译 引言..."
+          echo "===> 2. 动态生成并编译 引言..."
           cat << 'TEX' > generated_chapters/gen_intro.tex
           \input{preamble.tex}
           \begin{document}
@@ -62,7 +53,7 @@ jobs:
           TEX
           xelatex -interaction=nonstopmode generated_chapters/gen_intro.tex || true
 
-          echo "===> 4. 动态生成并独立编译 第一章 到 第六章..."
+          echo "===> 3. 动态生成并独立编译 第一章 到 第六章..."
           cn_nums=("一" "二" "三" "四" "五" "六")
           for i in {1..6}; do
             idx=$((i-1))
@@ -83,7 +74,7 @@ jobs:
           EOF
           chmod +x run_latex.sh
 
-      # 4. 在 Docker 容器中执行上述编译脚本
+      # 4. 在 Docker 容器中执行编译
       - name: 🚀 统一执行 LaTeX 原生编译
         uses: docker://ghcr.io/xu-cheng/texlive-full:latest
         with:
@@ -101,8 +92,8 @@ jobs:
       - name: 🌐 渲染 Quarto 网页
         run: quarto render --output-dir _site
 
-      # 7. 批量并发压缩 PDF 并按照 index.qmd 中文名分发到 chapters/
-      - name: ⚡ 批量压缩与标准化命名 PDF
+      # 7. 批量并发压缩 PDF、按页码提取目录并分发到 chapters/
+      - name: ⚡ 批量压缩、提取目录与标准化命名 PDF
         run: |
           mkdir -p _site/chapters
           
@@ -121,11 +112,16 @@ jobs:
           # 1. 压缩发布全书
           optimize_pdf "CCBook/main.pdf" "_site/chapters/云计算技术实践_全书.pdf"
           
-          # 2. 压缩发布目录与引言
-          optimize_pdf "CCBook/gen_toc.pdf" "_site/chapters/云计算技术实践_目录.pdf"
+          # 2. 精确截取全书的第 2 到第 7 页作为完整目录并优化
+          echo "正在提取目录页 (2-7页)..."
+          qpdf --empty --pages CCBook/main.pdf 2-7 -- "temp_toc.pdf"
+          optimize_pdf "temp_toc.pdf" "_site/chapters/云计算技术实践_目录.pdf"
+          rm -f "temp_toc.pdf"
+
+          # 3. 压缩发布引言
           optimize_pdf "CCBook/gen_intro.pdf" "_site/chapters/云计算技术实践_引言.pdf"
 
-          # 3. 压缩发布第 1 至 6 章
+          # 4. 压缩发布第 1 至 6 章
           cn_nums=("一" "二" "三" "四" "五" "六")
           for i in {1..6}; do
             idx=$((i-1))

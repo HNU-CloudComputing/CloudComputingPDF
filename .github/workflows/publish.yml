@@ -30,28 +30,35 @@ jobs:
           ref: 'main'
           fetch-depth: 0
 
-      # 3. 极速合并编译：使用官方容器一次性编译全书与所有子章节
+      # 3.1 生成编译脚本（避免 YAML 引号转义问题）
+      - name: 📝 创建编译脚本
+        run: |
+          cat << 'EOF' > compile.sh
+          #!/bin/bash
+          set -e
+
+          echo "===> 正在编译完整版 main.tex..."
+          cd CCBook
+          xelatex -interaction=nonstopmode main.tex || true
+          xelatex -interaction=nonstopmode main.tex || true
+
+          echo "===> 正在编译各独立章节..."
+          cd pdf_export
+          export TEXINPUTS=".:..:"
+          for tex in export_chapter_intro.tex export_chapter_1.tex export_chapter_2.tex export_chapter_3.tex export_chapter_4.tex export_chapter_5.tex export_chapter_6.tex; do
+            if [ -f "$tex" ]; then
+              echo "正在编译: $tex"
+              xelatex -interaction=nonstopmode "$tex" || true
+            fi
+          done
+          EOF
+          chmod +x compile.sh
+
+      # 3.2 调用 TeXLive 容器直接执行该脚本
       - name: 🚀 统一编译 LaTeX (全书 + 所有章节)
         uses: docker://ghcr.io/xu-cheng/texlive-full:latest
         with:
-          args: |
-            bash -c '
-              set -e
-              echo "===> 正在编译完整版 main.tex..."
-              cd CCBook
-              xelatex -interaction=nonstopmode main.tex || true
-              xelatex -interaction=nonstopmode main.tex || true
-
-              echo "===> 正在编译各独立章节..."
-              cd pdf_export
-              export TEXINPUTS=".:..:"
-              for tex in export_chapter_intro.tex export_chapter_1.tex export_chapter_2.tex export_chapter_3.tex export_chapter_4.tex export_chapter_5.tex export_chapter_6.tex; do
-                if [ -f "$tex" ]; then
-                  echo "正在编译: $tex"
-                  xelatex -interaction=nonstopmode "$tex" || true
-                fi
-              done
-            '
+          args: bash ./compile.sh
 
       # 4. 安装工具并进行多核并行压制
       - name: ⚡ 提取目录并多进程并发优化 PDF

@@ -30,53 +30,113 @@ jobs:
           ref: 'main'
           fetch-depth: 0
 
-      # 3. 生成独立的纯文本编译脚本 (彻底避免 Docker args 传参转义截断)
-      - name: 📝 准备编译脚本
+      # 3. 动态组装并编写编译脚本
+      - name: 📝 准备编译脚本 (全书 + 原生独立分章节)
         run: |
           cat << 'EOF' > run_latex.sh
           #!/bin/bash
           set -e
           cd CCBook
+          
+          echo "===> 1. 编译全书 main.tex..."
           xelatex -interaction=nonstopmode main.tex || true
+          xelatex -interaction=nonstopmode main.tex || true
+          
+          mkdir -p generated_chapters
+          
+          echo "===> 2. 动态生成并编译独立目录 (TOC)..."
+          cat << 'TEX' > generated_chapters/gen_toc.tex
+          \input{preamble.tex}
+          \begin{document}
+          \tableofcontents
+          \end{document}
+          TEX
+          xelatex -interaction=nonstopmode generated_chapters/gen_toc.tex || true
+          
+          echo "===> 3. 动态生成并编译 引言..."
+          cat << 'TEX' > generated_chapters/gen_intro.tex
+          \input{preamble.tex}
+          \begin{document}
+          \input{section/intro}
+          \end{document}
+          TEX
+          xelatex -interaction=nonstopmode generated_chapters/gen_intro.tex || true
+
+          echo "===> 4. 动态生成并独立编译 第一章 到 第六章..."
+          cn_nums=("一" "二" "三" "四" "五" "六")
+          for i in {1..6}; do
+            idx=$((i-1))
+            cn_char=${cn_nums[$idx]}
+            sec_file="section/sec${i}.tex"
+            
+            if [ -f "$sec_file" ]; then
+              echo "正在编译 第${cn_char}章: $sec_file"
+              cat << TEX > "generated_chapters/gen_sec${i}.tex"
+              \input{preamble.tex}
+              \begin{document}
+              \input{section/sec${i}}
+              \end{document}
+          TEX
+              xelatex -interaction=nonstopmode "generated_chapters/gen_sec${i}.tex" || true
+            fi
+          done
           EOF
           chmod +x run_latex.sh
 
-      # 4. 在 Docker 容器中执行该脚本
-      - name: 🚀 执行 LaTeX 编译 (生成 main.pdf)
+      # 4. 在 Docker 容器中执行上述编译脚本
+      - name: 🚀 统一执行 LaTeX 原生编译
         uses: docker://ghcr.io/xu-cheng/texlive-full:latest
         with:
           args: ./run_latex.sh
 
-      # 5. 安装工具、优化 PDF 并切出目录
-      - name: ⚡ 优化 PDF 与提取目录
+      # 5. 安装压缩工具与 Quarto
+      - name: ⚙️ 安装依赖与 Quarto
         run: |
           sudo apt-get update && sudo apt-get install -y ghostscript qpdf
-          
-          mkdir -p test_output_pdfs
-          
-          if [ -f "CCBook/main.pdf" ]; then
-            echo "正在优化主 PDF..."
-            gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dPDFSETTINGS=/ebook -dNOPAUSE -dQUIET -dBATCH -sOutputFile="temp_main.pdf" "CCBook/main.pdf"
-            qpdf --linearize "temp_main.pdf" "test_output_pdfs/main.pdf"
-            rm -f "temp_main.pdf"
-            
-            # 提取前 6 页目录
-            qpdf --empty --pages CCBook/main.pdf 1-6 -- test_output_pdfs/export_toc.pdf || true
-          fi
-
-      # 6. 安装 Quarto
+        
       - name: 📊 安装 Quarto
         uses: quarto-dev/quarto-actions/setup@v2
 
-      # 7. 渲染网页并将生成的 PDF 整合进 _site
+      # 6. 渲染 Quarto 静态网页
       - name: 🌐 渲染 Quarto 网页
-        run: |
-          quarto render --output-dir _site
-          mkdir -p _site/download_pdfs
-          cp test_output_pdfs/*.pdf _site/download_pdfs/ 2>/dev/null || true
-          ls -la _site
+        run: quarto render --output-dir _site
 
-      # 8. 发布到 gh-pages
+      # 7. 批量并发压缩 PDF 并按照 index.qmd 中文名分发到 chapters/
+      - name: ⚡ 批量压缩与标准化命名 PDF
+        run: |
+          mkdir -p _site/chapters
+          
+          # 定义单文件优化压制函数
+          optimize_pdf() {
+            local src="$1"
+            local dest="$2"
+            if [ -f "$src" ]; then
+              echo "正在优化: $src -> $dest"
+              gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dPDFSETTINGS=/ebook -dNOPAUSE -dQUIET -dBATCH -sOutputFile="temp.pdf" "$src"
+              qpdf --linearize "temp.pdf" "$dest"
+              rm -f temp.pdf
+            fi
+          }
+
+          # 1. 压缩发布全书
+          optimize_pdf "CCBook/main.pdf" "_site/chapters/云计算技术实践_全书.pdf"
+          
+          # 2. 压缩发布目录与引言
+          optimize_pdf "CCBook/gen_toc.pdf" "_site/chapters/云计算技术实践_目录.pdf"
+          optimize_pdf "CCBook/gen_intro.pdf" "_site/chapters/云计算技术实践_引言.pdf"
+
+          # 3. 压缩发布第 1 至 6 章
+          cn_nums=("一" "二" "三" "四" "五" "六")
+          for i in {1..6}; do
+            idx=$((i-1))
+            cn_char=${cn_nums[$idx]}
+            optimize_pdf "CCBook/gen_sec${i}.pdf" "_site/chapters/云计算技术实践_第${cn_char}章.pdf"
+          done
+          
+          echo "=== 最终生成并在前端可访问的 PDF 列表 ==="
+          ls -lh _site/chapters/
+
+      # 8. 发布到 gh-pages 分支
       - name: 🚀 发布至 gh-pages 分支
         uses: peaceiris/actions-gh-pages@v4
         with:

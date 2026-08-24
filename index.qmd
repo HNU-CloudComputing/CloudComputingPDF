@@ -4,7 +4,7 @@
 
 ::: {.callout-note appearance="simple" icon="false"}
 ## 🚀 离线阅读
-👉 [⬇️ 点击此处下载或全屏查看最新版 PDF](https://github.com/Ashionial/CloudComputingBook/releases/download/v1.0.0/Cloud_Computing_Practice.pdf)
+👉 [⬇️ 点击此处下载或全屏查看最新版 PDF](chapters/云计算技术实践_全书.pdf)
 :::
 
 <br>

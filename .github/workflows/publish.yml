@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      # 1. 检出当前 CloudComputingPDF 仓库
+      # 1. 检出当前仓库
       - name: 📥 检出当前仓库
         uses: actions/checkout@v4
 
@@ -30,39 +30,45 @@ jobs:
           ref: 'main'
           fetch-depth: 0
 
-      # 3. 极速编译：只编译 1 遍完整版 main.tex
-      - name: 🚀 统一编译完整版书籍 (生成 main.pdf)
+      # 3. 生成独立的纯文本编译脚本 (彻底避免 Docker args 传参转义截断)
+      - name: 📝 准备编译脚本
+        run: |
+          cat << 'EOF' > run_latex.sh
+          #!/bin/bash
+          set -e
+          cd CCBook
+          xelatex -interaction=nonstopmode main.tex || true
+          EOF
+          chmod +x run_latex.sh
+
+      # 4. 在 Docker 容器中执行该脚本
+      - name: 🚀 执行 LaTeX 编译 (生成 main.pdf)
         uses: docker://ghcr.io/xu-cheng/texlive-full:latest
         with:
-          args: |
-            bash -c '
-              cd CCBook
-              xelatex -interaction=nonstopmode main.tex
-            '
+          args: ./run_latex.sh
 
-      # 4. 优化完整版 PDF 并生成下载物料
-      - name: ⚡ 优化 PDF 与准备下载目录
+      # 5. 安装工具、优化 PDF 并切出目录
+      - name: ⚡ 优化 PDF 与提取目录
         run: |
           sudo apt-get update && sudo apt-get install -y ghostscript qpdf
           
           mkdir -p test_output_pdfs
           
-          # 1. 优化全书 main.pdf 并生成适合 Web 快速加载的线性化版本
           if [ -f "CCBook/main.pdf" ]; then
-            echo "正在压缩全书 PDF..."
+            echo "正在优化主 PDF..."
             gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dPDFSETTINGS=/ebook -dNOPAUSE -dQUIET -dBATCH -sOutputFile="temp_main.pdf" "CCBook/main.pdf"
             qpdf --linearize "temp_main.pdf" "test_output_pdfs/main.pdf"
             rm -f "temp_main.pdf"
             
-            # 2. 提取前几页目录（例如前 6 页）
+            # 提取前 6 页目录
             qpdf --empty --pages CCBook/main.pdf 1-6 -- test_output_pdfs/export_toc.pdf || true
           fi
 
-      # 5. 安装 Quarto
+      # 6. 安装 Quarto
       - name: 📊 安装 Quarto
         uses: quarto-dev/quarto-actions/setup@v2
 
-      # 6. 渲染 Quarto 网页并将生成的 PDF 整合进 _site
+      # 7. 渲染网页并将生成的 PDF 整合进 _site
       - name: 🌐 渲染 Quarto 网页
         run: |
           quarto render --output-dir _site
@@ -70,7 +76,7 @@ jobs:
           cp test_output_pdfs/*.pdf _site/download_pdfs/ 2>/dev/null || true
           ls -la _site
 
-      # 7. 🚀 发布至 gh-pages 分支
+      # 8. 发布到 gh-pages
       - name: 🚀 发布至 gh-pages 分支
         uses: peaceiris/actions-gh-pages@v4
         with:

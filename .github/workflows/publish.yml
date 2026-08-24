@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      # 1. 检出当前 CloudComputingPDF 仓库自身的代码/Quarto工程
+      # 1. 检出当前 CloudComputingPDF 仓库
       - name: 📥 检出当前仓库
         uses: actions/checkout@v4
 
@@ -30,68 +30,35 @@ jobs:
           ref: 'main'
           fetch-depth: 0
 
-      # 3.1 生成编译脚本（避免 YAML 引号转义问题）
-      - name: 📝 创建编译脚本
-        run: |
-          cat << 'EOF' > compile.sh
-          #!/bin/bash
-          set -e
-
-          echo "===> 正在编译完整版 main.tex..."
-          cd CCBook
-          xelatex -interaction=nonstopmode main.tex || true
-          xelatex -interaction=nonstopmode main.tex || true
-
-          echo "===> 正在编译各独立章节..."
-          cd pdf_export
-          export TEXINPUTS=".:..:"
-          for tex in export_chapter_intro.tex export_chapter_1.tex export_chapter_2.tex export_chapter_3.tex export_chapter_4.tex export_chapter_5.tex export_chapter_6.tex; do
-            if [ -f "$tex" ]; then
-              echo "正在编译: $tex"
-              xelatex -interaction=nonstopmode "$tex" || true
-            fi
-          done
-          EOF
-          chmod +x compile.sh
-
-      # 3.2 调用 TeXLive 容器直接执行该脚本
-      - name: 🚀 统一编译 LaTeX (全书 + 所有章节)
+      # 3. 极速编译：只编译 1 遍完整版 main.tex
+      - name: 🚀 统一编译完整版书籍 (生成 main.pdf)
         uses: docker://ghcr.io/xu-cheng/texlive-full:latest
         with:
-          args: bash ./compile.sh
+          args: |
+            bash -c '
+              cd CCBook
+              xelatex -interaction=nonstopmode main.tex
+            '
 
-      # 4. 安装工具并进行多核并行压制
-      - name: ⚡ 提取目录并多进程并发优化 PDF
+      # 4. 优化完整版 PDF 并生成下载物料
+      - name: ⚡ 优化 PDF 与准备下载目录
         run: |
           sudo apt-get update && sudo apt-get install -y ghostscript qpdf
           
           mkdir -p test_output_pdfs
           
-          # 提取目录
+          # 1. 优化全书 main.pdf 并生成适合 Web 快速加载的线性化版本
           if [ -f "CCBook/main.pdf" ]; then
+            echo "正在压缩全书 PDF..."
+            gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dPDFSETTINGS=/ebook -dNOPAUSE -dQUIET -dBATCH -sOutputFile="temp_main.pdf" "CCBook/main.pdf"
+            qpdf --linearize "temp_main.pdf" "test_output_pdfs/main.pdf"
+            rm -f "temp_main.pdf"
+            
+            # 2. 提取前几页目录（例如前 6 页）
             qpdf --empty --pages CCBook/main.pdf 1-6 -- test_output_pdfs/export_toc.pdf || true
           fi
-          
-          # 移动章节 PDF
-          mv CCBook/pdf_export/*.pdf test_output_pdfs/ 2>/dev/null || true
-          
-          # 定义单文件优化函数并并行处理
-          optimize_pdf() {
-            local file="$1"
-            [ -f "$file" ] || return 0
-            echo "正在并行优化: $file"
-            gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dPDFSETTINGS=/ebook -dNOPAUSE -dQUIET -dBATCH -sOutputFile="temp_$file" "$file"
-            qpdf --linearize "temp_$file" "opt_$file"
-            mv "opt_$file" "$file"
-            rm -f "temp_$file"
-          }
-          export -f optimize_pdf
 
-          cd test_output_pdfs
-          # 利用 CPU 全部核心并发执行压缩
-          find . -maxdepth 1 -name "*.pdf" | xargs -n 1 -P $(nproc) -I {} bash -c 'optimize_pdf "$@"' _ {}
-
-      # 5. 安装 Quarto 并渲染
+      # 5. 安装 Quarto
       - name: 📊 安装 Quarto
         uses: quarto-dev/quarto-actions/setup@v2
 
@@ -99,13 +66,11 @@ jobs:
       - name: 🌐 渲染 Quarto 网页
         run: |
           quarto render --output-dir _site
-          # 将优化后的 pdf 拷贝到 _site 中供下载
           mkdir -p _site/download_pdfs
           cp test_output_pdfs/*.pdf _site/download_pdfs/ 2>/dev/null || true
-
           ls -la _site
 
-      # 7. 🚀 自动发布到 gh-pages 分支
+      # 7. 🚀 发布至 gh-pages 分支
       - name: 🚀 发布至 gh-pages 分支
         uses: peaceiris/actions-gh-pages@v4
         with:

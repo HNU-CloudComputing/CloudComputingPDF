@@ -2,6 +2,11 @@
 /CCBook/
 /chapters/
 
+/docs/*.md
+!/docs/index.md
+
+/docs/figures
+
 # --- 忽略本地 LaTeX 编译缓存及 PDF 中间产物 ---
 *.aux
 *.log

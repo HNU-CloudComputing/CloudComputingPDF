@@ -1,73 +1,98 @@
-name: LaTeX 自动化编译测试 (不发布线上)
+name: LaTeX 自动化编译与网页生成
 
 on:
   push:
-    branches: main
+    branches:
+      - main
+  workflow_dispatch:
+  repository_dispatch:
+    types: [ source_book_updated ]
+
+# 如果后续需要自动推送到当前仓库的 gh-pages，打开此权限
+permissions:
+  contents: write
 
 jobs:
-  test-build:
+  build:
     runs-on: ubuntu-latest
     
     steps:
-      - name: 检出代码
+      # 1. 检出当前 CloudComputingPDF 仓库自身的代码/Quarto工程
+      - name: 📥 检出当前仓库
         uses: actions/checkout@v4
 
-      - name: 编译完整版 LaTeX (生成 main.pdf)
+      # 2. 拉取私有源仓库 CCBook 的 LaTeX 源码
+      - name: 📥 拉取私有源仓库 CCBook 源码
+        uses: actions/checkout@v4
+        with:
+          repository: 'HNU-CloudComputing/CCBook'
+          token: ${{ secrets.NOTIFY_PAT }}
+          path: 'CCBook'
+
+      # 3. 极速合并编译：单次容器运行，连续编译全书与所有子章节
+      - name: 🚀 统一编译 LaTeX (全书 + 所有章节)
         uses: xu-cheng/latex-action@v3
         continue-on-error: true
         with:
-          working_directory: CCBook
-          root_file: main.tex
-          compiler: xelatex
-          pre_compile: "xelatex -interaction=nonstopmode main.tex || true"
+          run: |
+            # 编译完整版
+            cd CCBook
+            xelatex -interaction=nonstopmode main.tex || true
+            xelatex -interaction=nonstopmode main.tex || true
 
-      - name: 独立编译各章节 PDF
-        uses: xu-cheng/latex-action@v3
-        continue-on-error: true
-        env:
-          TEXINPUTS: ".:..:"
-        with:
-          working_directory: CCBook/pdf_export
-          root_file: |
-            export_chapter_intro.tex
-            export_chapter_1.tex
-            export_chapter_2.tex
-            export_chapter_3.tex
-            export_chapter_4.tex
-            export_chapter_5.tex
-            export_chapter_6.tex
-          compiler: xelatex
+            # 编译各章节独立 PDF (通过 export 变量指定 TEXINPUTS 包含上级宏包)
+            cd pdf_export
+            export TEXINPUTS=".:..:"
+            for tex in export_chapter_intro.tex export_chapter_{1..6}.tex; do
+              if [ -f "$tex" ]; then
+                echo "正在编译章节: $tex"
+                xelatex -interaction=nonstopmode "$tex" || true
+              fi
+            done
 
-      - name: 安装优化工具
-        run: sudo apt-get update && sudo apt-get install -y ghostscript qpdf
-
-      - name: 提取目录与批量优化
+      # 4. 安装工具并进行多核并行压制
+      - name: ⚡ 提取目录并多进程并发优化 PDF
         run: |
+          sudo apt-get update && sudo apt-get install -y ghostscript qpdf
+          
           mkdir -p test_output_pdfs
           
-          qpdf --empty --pages CCBook/main.pdf 1-6 -- test_output_pdfs/export_toc.pdf
+          # 提取目录
+          if [ -f "CCBook/main.pdf" ]; then
+            qpdf --empty --pages CCBook/main.pdf 1-6 -- test_output_pdfs/export_toc.pdf || true
+          fi
           
-          mv CCBook/pdf_export/*.pdf test_output_pdfs/
+          # 移动章节 PDF
+          mv CCBook/pdf_export/*.pdf test_output_pdfs/ 2>/dev/null || true
           
-          cd test_output_pdfs
-          for file in *.pdf; do
-            echo "正在优化: $file"
-            gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dPDFSETTINGS=/ebook -dNOPAUSE -dQUIET -dBATCH -sOutputFile=temp.pdf "$file"
-            qpdf --linearize temp.pdf "optimized_$file"
-            mv "optimized_$file" "$file"
-            rm temp.pdf
-          done
+          # 定义单文件优化函数并并行处理
+          optimize_pdf() {
+            local file="$1"
+            [ -f "$file" ] || return 0
+            echo "正在并行优化: $file"
+            gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dPDFSETTINGS=/ebook -dNOPAUSE -dQUIET -dBATCH -sOutputFile="temp_$file" "$file"
+            qpdf --linearize "temp_$file" "opt_$file"
+            mv "opt_$file" "$file"
+            rm -f "temp_$file"
+          }
+          export -f optimize_pdf
 
-      - name: 安装 Quarto
+          cd test_output_pdfs
+          # 利用 CPU 全部核心并发执行压缩
+          find . -maxdepth 1 -name "*.pdf" | xargs -n 1 -P $(nproc) -I {} bash -c 'optimize_pdf "$@"' _ {}
+
+      # 5. 安装 Quarto 并渲染
+      - name: 📊 安装 Quarto
         uses: quarto-dev/quarto-actions/setup@v2
 
-      - name: 渲染网页 (Render Only)
+      - name: 🌐 渲染网页 (Render Only)
         run: quarto render
 
-      - name: 上传网站产物与新生成的 PDF
+      # 6. 上传最终产物
+      - name: 📦 上传制品 (Artifacts)
         uses: actions/upload-artifact@v4
         with:
-          name: test-website-and-pdfs
+          name: website-and-optimized-pdfs
           path: |
             _site/
             test_output_pdfs/

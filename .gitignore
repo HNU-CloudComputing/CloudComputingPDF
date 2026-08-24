@@ -1,0 +1,22 @@
+# --- 忽略私有拉取的 LaTeX 源码 ---
+/CCBook/
+
+# --- 忽略本地 LaTeX 编译缓存及 PDF 中间产物 ---
+*.aux
+*.log
+*.out
+*.toc
+*.synctex.gz
+*.fls
+*.fdb_latexmk
+/test_output_pdfs/
+
+# --- 忽略 Quarto 渲染产物及缓存 ---
+/.quarto/
+/_site/
+
+# --- 忽略系统与 IDE 临时文件 ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

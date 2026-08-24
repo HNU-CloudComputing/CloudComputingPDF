@@ -8,7 +8,6 @@ on:
   repository_dispatch:
     types: [ source_book_updated ]
 
-# 如果后续需要自动推送到当前仓库的 gh-pages，打开此权限
 permissions:
   contents: write
 
@@ -85,14 +84,18 @@ jobs:
       - name: 📊 安装 Quarto
         uses: quarto-dev/quarto-actions/setup@v2
 
-      - name: 🌐 渲染网页 (Render Only)
-        run: quarto render
+      # 6. 渲染 Quarto 网页并将生成的 PDF 整合进 _site
+      - name: 🌐 渲染 Quarto 网页
+        run: |
+          quarto render
+          # 将优化后的 pdf 拷贝到 _site 中供下载
+          mkdir -p _site/download_pdfs
+          cp test_output_pdfs/*.pdf _site/download_pdfs/ 2>/dev/null || true
 
-      # 6. 上传最终产物
-      - name: 📦 上传制品 (Artifacts)
-        uses: actions/upload-artifact@v4
+      # 7. 🚀 发布到 GitHub Pages 分支 (自动创建并推送 gh-pages)
+      - name: 🚀 发布至 gh-pages 分支
+        uses: quarto-dev/quarto-actions/publish@v2
         with:
-          name: website-and-optimized-pdfs
-          path: |
-            _site/
-            test_output_pdfs/
+          target: gh-pages
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

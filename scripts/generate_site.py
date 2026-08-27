@@ -24,7 +24,7 @@ def extract_chapters():
             with open(tex_full, "r", encoding="utf-8") as tf:
                 match = TITLE_PATTERN.search(tf.read())
                 raw_title = match.group(1).strip() if match else os.path.splitext(os.path.basename(item))[0]
-                # 清洗 LaTeX 宏和反斜杠
+                # 清洗 LaTeX 指令与反斜杠
                 clean_title = re.sub(r'\\[a-zA-Z]+(\{[^}]*\})?', '', raw_title).replace('\\', ' ').strip()
                 clean_title = re.sub(r'\s+', ' ', clean_title)
                 
@@ -61,8 +61,9 @@ def generate_qmd(chapters):
     for ch in chapters:
         key, title = ch["key"], ch["title"]
         is_intro = "intro" in key.lower()
-        # 修正 class 命名（避免类名前面多出双点号）
-        btn_class = ".btn-outline-dark" if is_intro else ".btn-outline-primary"
+        
+        # 补齐关键的 .btn 类名，确保 Bootstrap 按钮外框生效
+        btn_class = ".btn .btn-outline-dark" if is_intro else ".btn .btn-outline-primary"
         col_class = ".g-col-12 .g-col-md-6" if is_intro else ".g-col-12"
         icon = "💡 " if is_intro else "📖 "
         

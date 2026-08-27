@@ -24,9 +24,13 @@ def extract_chapters():
             with open(tex_full, "r", encoding="utf-8") as tf:
                 match = TITLE_PATTERN.search(tf.read())
                 raw_title = match.group(1).strip() if match else os.path.splitext(os.path.basename(item))[0]
-                clean_title = re.sub(r'\\[a-zA-Z]+(\{[^}]*\})?', '', raw_title).strip()
+                # 清洗 LaTeX 宏和反斜杠
+                clean_title = re.sub(r'\\[a-zA-Z]+(\{[^}]*\})?', '', raw_title).replace('\\', ' ').strip()
+                clean_title = re.sub(r'\s+', ' ', clean_title)
+                
+                key = os.path.splitext(os.path.basename(item))[0]
                 chapters.append({
-                    "key": os.path.splitext(os.path.basename(item))[0],
+                    "key": key,
                     "rel_path": item if not item.endswith(".tex") else item[:-4],
                     "title": clean_title
                 })
@@ -57,10 +61,16 @@ def generate_qmd(chapters):
     for ch in chapters:
         key, title = ch["key"], ch["title"]
         is_intro = "intro" in key.lower()
+        # 修正 class 命名（避免类名前面多出双点号）
         btn_class = ".btn-outline-dark" if is_intro else ".btn-outline-primary"
         col_class = ".g-col-12 .g-col-md-6" if is_intro else ".g-col-12"
         icon = "💡 " if is_intro else "📖 "
-        qmd += f"\n::: {{{col_class}}}\n[{icon}{title}](chapters/chapter_{key}.pdf){{{btn_class} .w-100 .text-start .shadow-sm}}\n:::\n"
+        
+        qmd += f"""
+::: {{{col_class}}}
+[{icon}{title}](chapters/chapter_{key}.pdf){{{btn_class} .w-100 .text-start .shadow-sm}}
+:::
+"""
 
     qmd += "\n:::\n"
 

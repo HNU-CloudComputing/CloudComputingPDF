@@ -2,8 +2,7 @@ name: LaTeX 自动化编译与网页生成
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
   workflow_dispatch:
   repository_dispatch:
     types: [ source_book_updated ]
@@ -16,11 +15,9 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      # 1. 检出当前仓库
       - name: 📥 检出当前仓库
         uses: actions/checkout@v4
 
-      # 2. 拉取私有源仓库 CCBook 的 LaTeX 源码
       - name: 📥 拉取私有源仓库 CCBook 源码
         uses: actions/checkout@v4
         with:
@@ -30,109 +27,39 @@ jobs:
           ref: 'main'
           fetch-depth: 0
 
-      # 3. 准备编译脚本 (全书 + 原生独立分章节)
-      - name: 📝 准备编译脚本
-        run: |
-          cat << 'EOF' > run_latex.sh
-          #!/bin/bash
-          set -e
-          cd CCBook
-          
-          echo "===> 1. 编译全书 main.tex..."
-          xelatex -interaction=nonstopmode main.tex || true
-          xelatex -interaction=nonstopmode main.tex || true
-          
-          mkdir -p generated_chapters
-          
-          echo "===> 2. 动态生成并编译 引言..."
-          cat << 'TEX' > generated_chapters/gen_intro.tex
-          \input{preamble.tex}
-          \begin{document}
-          \input{section/intro}
-          \end{document}
-          TEX
-          xelatex -interaction=nonstopmode generated_chapters/gen_intro.tex || true
+      - name: 🐍 解析章节并生成构建配置
+        run: python3 scripts/generate_site.py
 
-          echo "===> 3. 动态生成并独立编译 第一章 到 第六章..."
-          cn_nums=("一" "二" "三" "四" "五" "六")
-          for i in {1..6}; do
-            idx=$((i-1))
-            cn_char=${cn_nums[$idx]}
-            sec_file="section/sec${i}.tex"
-            
-            if [ -f "$sec_file" ]; then
-              echo "正在编译 第${cn_char}章: $sec_file"
-              cat << TEX > "generated_chapters/gen_sec${i}.tex"
-              \input{preamble.tex}
-              \begin{document}
-              \input{section/sec${i}}
-              \end{document}
-          TEX
-              xelatex -interaction=nonstopmode "generated_chapters/gen_sec${i}.tex" || true
-            fi
-          done
-          EOF
-          chmod +x run_latex.sh
-
-      # 4. 在 Docker 容器中执行编译
       - name: 🚀 统一执行 LaTeX 原生编译
         uses: docker://ghcr.io/xu-cheng/texlive-full:latest
         with:
           args: ./run_latex.sh
 
-      # 5. 安装压缩工具与 Quarto
       - name: ⚙️ 安装依赖与 Quarto
         run: |
           sudo apt-get update && sudo apt-get install -y ghostscript qpdf
-        
-      - name: 📊 安装 Quarto
-        uses: quarto-dev/quarto-actions/setup@v2
+      - uses: quarto-dev/quarto-actions/setup@v2
 
-      # 6. 渲染 Quarto 静态网页
       - name: 🌐 渲染 Quarto 网页
         run: quarto render --output-dir _site
 
-      # 7. 批量并发压缩 PDF、按页码提取目录并分发到 chapters/
-      - name: ⚡ 批量压缩、提取目录与标准化命名 PDF
+      - name: ⚡ 批量压缩与分发 PDF
         run: |
           mkdir -p _site/chapters
-          
-          # 定义单文件优化压制函数
-          optimize_pdf() {
-            local src="$1"
-            local dest="$2"
-            if [ -f "$src" ]; then
-              echo "正在优化: $src -> $dest"
-              gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dPDFSETTINGS=/ebook -dNOPAUSE -dQUIET -dBATCH -sOutputFile="temp.pdf" "$src"
-              qpdf --linearize "temp.pdf" "$dest"
-              rm -f temp.pdf
-            fi
+          optimize() {
+            [ -f "$1" ] || return 0
+            gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dPDFSETTINGS=/ebook -dNOPAUSE -dQUIET -dBATCH -sOutputFile="tmp.pdf" "$1"
+            qpdf --linearize "tmp.pdf" "$2" && rm -f tmp.pdf
           }
-
-          # 1. 压缩发布全书
-          optimize_pdf "CCBook/main.pdf" "_site/chapters/云计算技术实践_全书.pdf"
-          
-          # 2. 精确截取全书的第 2 到第 7 页作为完整目录并优化
-          echo "正在提取目录页 (2-7页)..."
-          qpdf --empty --pages CCBook/main.pdf 2-7 -- "temp_toc.pdf"
-          optimize_pdf "temp_toc.pdf" "_site/chapters/云计算技术实践_目录.pdf"
-          rm -f "temp_toc.pdf"
-
-          # 3. 压缩发布引言
-          optimize_pdf "CCBook/gen_intro.pdf" "_site/chapters/云计算技术实践_引言.pdf"
-
-          # 4. 压缩发布第 1 至 6 章
-          cn_nums=("一" "二" "三" "四" "五" "六")
-          for i in {1..6}; do
-            idx=$((i-1))
-            cn_char=${cn_nums[$idx]}
-            optimize_pdf "CCBook/gen_sec${i}.pdf" "_site/chapters/云计算技术实践_第${cn_char}章.pdf"
+          # 全书与目录截取
+          optimize "CCBook/main.pdf" "_site/chapters/云计算技术实践_全书.pdf"
+          qpdf --empty --pages CCBook/main.pdf 2-7 -- "tmp_toc.pdf" 2>/dev/null || true
+          optimize "tmp_toc.pdf" "_site/chapters/云计算技术实践_目录.pdf" && rm -f tmp_toc.pdf
+          # 分章 PDF
+          for pdf in CCBook/gen_*.pdf; do
+            [ -f "$pdf" ] && optimize "$pdf" "_site/chapters/chapter_${pdf#CCBook/gen_}"
           done
-          
-          echo "=== 最终生成并在前端可访问的 PDF 列表 ==="
-          ls -lh _site/chapters/
 
-      # 8. 发布到 gh-pages 分支
       - name: 🚀 发布至 gh-pages 分支
         uses: peaceiris/actions-gh-pages@v4
         with:

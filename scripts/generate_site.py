@@ -95,7 +95,7 @@ title-block-banner: false
       <p class="publication-abstract">以在线游戏为贯穿案例，从网络通信、单机并发和分布式协同逐步进入云原生部署与核心原理。本页提供高保真完整教材和分章 PDF。</p>
       <dl class="publication-meta">
         <div><dt>版本日期</dt><dd>{edition_date}</dd></div>
-        <div><dt>出版单位</dt><dd>湖南大学计算机学院 GuoLab 团队</dd></div>
+        <div><dt>编写单位</dt><dd>湖南大学计算机学院 GuoLab 团队</dd></div>
       </dl>
       <div class="publication-actions">
         <a class="publication-button publication-button-primary" href="{FULL_PDF_PATH}">在线阅读完整教材</a>

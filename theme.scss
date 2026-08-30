@@ -537,6 +537,15 @@ body {
     grid-template-columns: 1fr;
   }
 
+  .publication-summary h1 {
+    font-size: 1.85rem;
+    letter-spacing: 0;
+  }
+
+  .publication-summary h1 em {
+    font-size: 0.68em;
+  }
+
   .publication-actions,
   .publication-button {
     width: 100%;

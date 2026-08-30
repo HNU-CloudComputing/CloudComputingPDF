@@ -59,13 +59,11 @@ def get_source_metadata(ccbook_path):
 
     return {
         "date": git_value("%cs", "持续更新"),
-        "revision": git_value("%h", "main"),
     }
 
 
 def generate_qmd(chapters, source_metadata, output_path="index.qmd"):
     edition_date = html.escape(source_metadata["date"])
-    edition_revision = html.escape(source_metadata["revision"])
     qmd = f"""---
 title: "{BOOK_TITLE}"
 page-layout: custom
@@ -77,14 +75,14 @@ title-block-banner: false
 <div class="publication-page">
   <div class="edition-ribbon" aria-label="版本信息">
     <span>HUNAN UNIVERSITY · DIGITAL TEXTBOOK</span>
-    <span>PDF EDITION / {edition_date} / {edition_revision}</span>
+    <span>PDF EDITION / {edition_date}</span>
   </div>
 
   <section class="publication-hero" aria-labelledby="publication-title">
     <div class="book-object" aria-hidden="true">
       <div class="book-spine">HNU · CLOUD COMPUTING</div>
       <div class="book-cover">
-        <span class="book-cover-series">湖南大学 · 云计算课程教材</span>
+        <span class="book-cover-series">湖南大学计算机学院 · 云计算课程教材</span>
         <div class="book-cover-title">云计算<br>原理与实践</div>
         <span class="book-cover-subtitle">以在线游戏为载体</span>
         <span class="book-cover-imprint">GUOLAB · PDF EDITION</span>
@@ -97,9 +95,7 @@ title-block-banner: false
       <p class="publication-abstract">以在线游戏为贯穿案例，从网络通信、单机并发和分布式协同逐步进入云原生部署与核心原理。本页提供高保真完整教材和分章 PDF。</p>
       <dl class="publication-meta">
         <div><dt>版本日期</dt><dd>{edition_date}</dd></div>
-        <div><dt>源版本</dt><dd>{edition_revision}</dd></div>
-        <div><dt>内容结构</dt><dd>前言 · 六章 · 两份附录</dd></div>
-        <div><dt>出版单位</dt><dd>湖南大学 HNU GuoLab</dd></div>
+        <div><dt>出版单位</dt><dd>湖南大学计算机学院 GuoLab 团队</dd></div>
       </dl>
       <div class="publication-actions">
         <a class="publication-button publication-button-primary" href="{FULL_PDF_PATH}">在线阅读完整教材</a>
@@ -186,7 +182,7 @@ title-block-banner: false
       </div>
       <div class="colophon-block">
         <h3>编者信息</h3>
-        <p><a href="https://grzy.hnu.edu.cn/site/index/chenguo">陈果</a>、徐方林、胡文举、庞海鑫、谢先衍、贺臻、张道平<br>湖南大学 HNU GuoLab</p>
+        <p><a href="https://grzy.hnu.edu.cn/site/index/chenguo">陈果</a>、徐方林、胡文举、庞海鑫、谢先衍、贺臻、张道平<br>湖南大学计算机学院 GuoLab 团队</p>
       </div>
       <div class="colophon-block colophon-license">
         <h3>版权与使用</h3>

@@ -172,16 +172,20 @@ title-block-banner: false
     qmd += f"""  <section class="publication-colophon" aria-label="教材与版权信息">
     <div class="colophon-heading">
       <span class="publication-label">COLOPHON</span>
-      <h2>出版与版权信息</h2>
+      <h2>编者与版权信息</h2>
       <p>面向本科云计算课程的持续更新教材。</p>
     </div>
     <div class="colophon-content">
       <div class="colophon-block">
         <h3>编者信息</h3>
-        <p><a href="https://grzy.hnu.edu.cn/site/index/chenguo">陈果</a>、徐方林、胡文举、庞海鑫、谢先衍、贺臻、张道平<br>湖南大学计算机学院 GuoLab 团队</p>
+        <dl class="colophon-details">
+          <div><dt>编者</dt><dd><a href="https://grzy.hnu.edu.cn/site/index/chenguo">陈果</a>、徐方林、胡文举、庞海鑫、谢先衍、贺臻、张道平</dd></div>
+          <div><dt>编写单位</dt><dd>湖南大学计算机学院 GuoLab 团队</dd></div>
+          <div><dt>联系邮箱</dt><dd><a href="mailto:guochen@hnu.edu.cn">guochen@hnu.edu.cn</a>、<a href="mailto:xfl825@hnu.edu.cn">xfl825@hnu.edu.cn</a>、<a href="mailto:ashionial@hnu.edu.cn">ashionial@hnu.edu.cn</a></dd></div>
+        </dl>
       </div>
       <div class="colophon-block colophon-license">
-        <h3>版权与使用</h3>
+        <h3>版权与使用说明</h3>
         <p>本项目中的文档、示例代码和架构图表均受版权保护。公开内容可用于个人学习、学术研究和非商业教育实践；未经书面许可，不得用于商业产品、付费课程、培训项目或商业出版物。完整条款请参阅 <a href="{LICENSE_URL}">LICENSE</a>。</p>
       </div>
     </div>

@@ -130,16 +130,25 @@ title-block-banner: false
 """
 
     qmd += f"""  <section class="course-information" aria-label="教材与版权信息">
-    <div>
+    <div class="course-about">
       <span class="course-section-label">ABOUT THE BOOK</span>
       <h2>教材说明</h2>
       <p>教材以在线游戏为贯穿案例，但所讨论的规模、状态、故障和资源问题同样适用于在线协作、电商平台和大模型服务。</p>
     </div>
-    <div>
+    <div class="course-editorial-block">
       <span class="course-section-label">EDITORIAL TEAM</span>
-      <h2>编写团队</h2>
-      <p>核心编者与架构设计：陈果、徐方林、胡文举、庞海鑫、谢先衍、贺臻、张道平。</p>
-      <p><a href="{LICENSE_URL}">版权与使用说明</a></p>
+      <h2>编者信息</h2>
+      <dl class="editorial-list">
+        <div><dt>核心编者与架构设计</dt><dd><a href="https://grzy.hnu.edu.cn/site/index/chenguo">陈果</a>、徐方林、胡文举、庞海鑫、谢先衍、贺臻、张道平</dd></div>
+        <div><dt>所属单位</dt><dd>湖南大学 HNU GuoLab</dd></div>
+        <div><dt>联系邮箱</dt><dd><a href="mailto:guochen@hnu.edu.cn">guochen@hnu.edu.cn</a>、<a href="mailto:xfl825@hnu.edu.cn">xfl825@hnu.edu.cn</a>、<a href="mailto:ashionial@hnu.edu.cn">ashionial@hnu.edu.cn</a></dd></div>
+      </dl>
+    </div>
+    <div class="course-license">
+      <span class="course-section-label">COPYRIGHT AND USE</span>
+      <h2>版权与使用说明</h2>
+      <p class="course-copyright">Copyright © 2026 GuoLab. All Rights Reserved.</p>
+      <p>本项目中的文档、示例代码和架构图表均受版权保护。公开内容可用于个人学习、学术研究和非商业教育实践；未经书面许可，不得用于商业产品、付费课程、培训项目或商业出版物。完整条款请参阅 <a href="{LICENSE_URL}">LICENSE</a>。</p>
     </div>
   </section>
 </div>

@@ -182,7 +182,7 @@ title-block-banner: false
       </div>
       <div class="colophon-block colophon-license">
         <h3>版权与使用</h3>
-        <p>Copyright © 2026 GuoLab. All Rights Reserved. 公开内容可用于个人学习、学术研究和非商业教育实践；完整条款请参阅 <a href="{LICENSE_URL}">LICENSE</a>。</p>
+        <p>公开内容可用于个人学习、学术研究和非商业教育实践；完整条款请参阅 <a href="{LICENSE_URL}">LICENSE</a>。</p>
       </div>
     </div>
   </section>

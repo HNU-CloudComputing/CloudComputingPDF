@@ -177,10 +177,6 @@ title-block-banner: false
     </div>
     <div class="colophon-content">
       <div class="colophon-block">
-        <h3>教材说明</h3>
-        <p>教材以在线游戏为贯穿案例，但所讨论的规模、状态、故障和资源问题同样适用于在线协作、电商平台和大模型服务。</p>
-      </div>
-      <div class="colophon-block">
         <h3>编者信息</h3>
         <p><a href="https://grzy.hnu.edu.cn/site/index/chenguo">陈果</a>、徐方林、胡文举、庞海鑫、谢先衍、贺臻、张道平<br>湖南大学计算机学院 GuoLab 团队</p>
       </div>

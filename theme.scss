@@ -448,7 +448,7 @@ body {
 
 .colophon-content {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   border-top: 1px solid rgba(255, 255, 255, 0.22);
   border-left: 1px solid rgba(255, 255, 255, 0.22);
 }
@@ -460,7 +460,7 @@ body {
 }
 
 .colophon-license {
-  grid-column: 1 / -1;
+  grid-column: 1;
 }
 
 .colophon-block h3 {
@@ -564,7 +564,4 @@ body {
     display: none;
   }
 
-  .colophon-license {
-    grid-column: auto;
-  }
 }

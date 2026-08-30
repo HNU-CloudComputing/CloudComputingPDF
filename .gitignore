@@ -23,6 +23,11 @@
 /index.qmd
 /run_latex.sh
 
+# --- 本地预编译 PDF 及拆分产物（仅发布到 gh-pages） ---
+/云计算技术实践-*.pdf
+/output/
+/tmp/
+
 # --- 忽略系统与 IDE 临时文件 ---
 .DS_Store
 Thumbs.db

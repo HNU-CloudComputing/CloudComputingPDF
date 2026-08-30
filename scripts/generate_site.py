@@ -1,9 +1,9 @@
+import argparse
 import os
 import re
 import html
+import json
 
-CCBOOK_PATH = "CCBook"
-MAIN_TEX = os.path.join(CCBOOK_PATH, "main.tex")
 TITLE_PATTERN = re.compile(r'\\(?:chapter|section)\*?\{([^}]+)\}')
 BOOK_TITLE = "云计算原理与实践：以在线游戏为载体"
 BOOK_FILE_STEM = BOOK_TITLE
@@ -11,8 +11,9 @@ LICENSE_URL = "https://github.com/HNU-CloudComputing/CloudComputingPDF/blob/main
 FULL_PDF_PATH = f"chapters/{BOOK_FILE_STEM}_全书.pdf"
 MARKDOWN_URL = "https://hnu-cloudcomputing.github.io/CloudComputingMarkdown/"
 
-def extract_chapters():
-    with open(MAIN_TEX, "r", encoding="utf-8") as f:
+def extract_chapters(ccbook_path="CCBook"):
+    main_tex = os.path.join(ccbook_path, "main.tex")
+    with open(main_tex, "r", encoding="utf-8") as f:
         main_content = f.read()
 
     inputs = re.findall(r'\\input\{([^}]+)\}', main_content)
@@ -24,7 +25,7 @@ def extract_chapters():
             continue
 
         tex_rel = item if item.endswith(".tex") else f"{item}.tex"
-        tex_full = os.path.join(CCBOOK_PATH, tex_rel)
+        tex_full = os.path.join(ccbook_path, tex_rel)
 
         if os.path.exists(tex_full):
             with open(tex_full, "r", encoding="utf-8") as tf:
@@ -42,7 +43,7 @@ def extract_chapters():
                 })
     return chapters
 
-def generate_qmd(chapters):
+def generate_qmd(chapters, output_path="index.qmd"):
     qmd = f"""---
 title: "{BOOK_TITLE}"
 page-layout: custom
@@ -50,6 +51,7 @@ toc: false
 title-block-banner: false
 ---
 
+```{{=html}}
 <div class="course-page">
   <section class="course-hero" aria-labelledby="course-title">
     <div class="course-kicker">湖南大学 · 云计算课程教材</div>
@@ -152,13 +154,14 @@ title-block-banner: false
     </div>
   </section>
 </div>
+```
 """
 
-    with open("index.qmd", "w", encoding="utf-8") as f:
+    with open(output_path, "w", encoding="utf-8") as f:
         f.write(qmd)
 
-def generate_compile_sh(chapters):
-    sh_content = """#!/bin/bash
+def generate_compile_sh(chapters, output_path="run_latex.sh"):
+    sh_content = """#!/usr/bin/env bash
 set -e
 cd CCBook
 echo "===> 1. 编译全书 main.tex..."
@@ -177,12 +180,29 @@ cat << 'TEX' > generated_chapters/gen_{ch['key']}.tex
 TEX
 xelatex -interaction=nonstopmode generated_chapters/gen_{ch['key']}.tex || true
 """
-    with open("run_latex.sh", "w", encoding="utf-8") as f:
+    with open(output_path, "w", encoding="utf-8") as f:
         f.write(sh_content)
-    os.chmod("run_latex.sh", 0o755)
+    os.chmod(output_path, 0o755)
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="生成 PDF 站点首页和构建配置")
+    parser.add_argument("--source-dir", default="CCBook", help="LaTeX 教材源码目录")
+    parser.add_argument("--site-output", default="index.qmd", help="生成的 Quarto 首页路径")
+    parser.add_argument("--compile-script-output", default="run_latex.sh", help="兼容用串行编译脚本路径")
+    parser.add_argument("--site-only", action="store_true", help="只生成站点首页，不生成串行编译脚本")
+    parser.add_argument("--matrix-only", action="store_true", help="只输出 GitHub Actions 章节矩阵 JSON")
+    return parser.parse_args()
 
 if __name__ == "__main__":
-    ch_list = extract_chapters()
-    generate_qmd(ch_list)
-    generate_compile_sh(ch_list)
-    print("✅ index.qmd 与 run_latex.sh 均已成功动态生成")
+    args = parse_args()
+    ch_list = extract_chapters(args.source_dir)
+
+    if args.matrix_only:
+        matrix = [{"key": ch["key"], "rel_path": ch["rel_path"]} for ch in ch_list]
+        print(json.dumps(matrix, ensure_ascii=False, separators=(",", ":")))
+    else:
+        generate_qmd(ch_list, args.site_output)
+        if not args.site_only:
+            generate_compile_sh(ch_list, args.compile_script_output)
+        print(f"✅ 已生成 {args.site_output}")

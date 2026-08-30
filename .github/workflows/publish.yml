@@ -1,19 +1,20 @@
-name: LaTeX 自动化编译与网页生成
+name: PDF 站点快速发布
 
 on:
   push:
     branches: [ main ]
   workflow_dispatch:
-  repository_dispatch:
-    types: [ source_book_updated ]
 
 permissions:
   contents: write
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
-    
+    concurrency:
+      group: cloudcomputingpdf-pages-deploy
+      cancel-in-progress: false
+
     steps:
       - name: 📥 检出当前仓库
         uses: actions/checkout@v4
@@ -27,36 +28,24 @@ jobs:
           ref: 'main'
           fetch-depth: 0
 
-      - name: 🐍 解析章节并生成构建配置
-        run: python3 scripts/generate_site.py
+      - name: 🐍 生成站点首页
+        run: python3 scripts/generate_site.py --site-only
 
-      - name: 🚀 统一执行 LaTeX 原生编译
-        uses: docker://ghcr.io/xu-cheng/texlive-full:latest
-        with:
-          args: ./run_latex.sh
-
-      - name: ⚙️ 安装依赖与 Quarto
-        run: |
-          sudo apt-get update && sudo apt-get install -y ghostscript qpdf
       - uses: quarto-dev/quarto-actions/setup@v2
 
       - name: 🌐 渲染 Quarto 网页
         run: quarto render --output-dir _site
 
-      - name: ⚡ 批量压缩与分发 PDF
+      - name: 📥 读取上一版 PDF
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: previous_site
+
+      - name: ♻️ 复用已发布 PDF
         run: |
           mkdir -p _site/chapters
-          optimize() {
-            [ -f "$1" ] || return 0
-            gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dPDFSETTINGS=/ebook -dNOPAUSE -dQUIET -dBATCH -sOutputFile="tmp.pdf" "$1"
-            qpdf --linearize "tmp.pdf" "$2" && rm -f tmp.pdf
-          }
-          # 完整教材 PDF
-          optimize "CCBook/main.pdf" "_site/chapters/云计算原理与实践：以在线游戏为载体_全书.pdf"
-          # 分章 PDF
-          for pdf in CCBook/gen_*.pdf; do
-            [ -f "$pdf" ] && optimize "$pdf" "_site/chapters/chapter_${pdf#CCBook/gen_}"
-          done
+          cp -a previous_site/chapters/. _site/chapters/
 
       - name: 🚀 发布至 gh-pages 分支
         uses: peaceiris/actions-gh-pages@v4

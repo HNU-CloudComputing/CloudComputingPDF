@@ -182,7 +182,7 @@ title-block-banner: false
       </div>
       <div class="colophon-block colophon-license">
         <h3>版权与使用</h3>
-        <p>公开内容可用于个人学习、学术研究和非商业教育实践；完整条款请参阅 <a href="{LICENSE_URL}">LICENSE</a>。</p>
+        <p>本项目中的文档、示例代码和架构图表均受版权保护。公开内容可用于个人学习、学术研究和非商业教育实践；未经书面许可，不得用于商业产品、付费课程、培训项目或商业出版物。完整条款请参阅 <a href="{LICENSE_URL}">LICENSE</a>。</p>
       </div>
     </div>
   </section>

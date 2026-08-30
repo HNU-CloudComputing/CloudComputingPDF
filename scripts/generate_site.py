@@ -1,5 +1,6 @@
 import os
 import re
+import html
 
 CCBOOK_PATH = "CCBook"
 MAIN_TEX = os.path.join(CCBOOK_PATH, "main.tex")
@@ -7,6 +8,8 @@ TITLE_PATTERN = re.compile(r'\\(?:chapter|section)\*?\{([^}]+)\}')
 BOOK_TITLE = "云计算原理与实践：以在线游戏为载体"
 BOOK_FILE_STEM = BOOK_TITLE
 LICENSE_URL = "https://github.com/HNU-CloudComputing/CloudComputingPDF/blob/main/LICENSE"
+FULL_PDF_PATH = f"chapters/{BOOK_FILE_STEM}_全书.pdf"
+MARKDOWN_URL = "https://hnu-cloudcomputing.github.io/CloudComputingMarkdown/"
 
 def extract_chapters():
     with open(MAIN_TEX, "r", encoding="utf-8") as f:
@@ -40,57 +43,107 @@ def extract_chapters():
     return chapters
 
 def generate_qmd(chapters):
-    qmd = f"# {BOOK_TITLE} {{.unnumbered}}\n\n"
-    qmd += """这是由 **GuoLab** 成员倾力编写的教科书。由于高质量排版的需要，目前主要以高保真 PDF 形式呈现。
+    qmd = f"""---
+title: "{BOOK_TITLE}"
+page-layout: custom
+toc: false
+title-block-banner: false
+---
 
-::: {.callout-note appearance="simple" icon="false"}
-## 🚀 离线阅读
+<div class="course-page">
+  <section class="course-hero" aria-labelledby="course-title">
+    <div class="course-kicker">湖南大学 · 云计算课程教材</div>
+    <div class="course-hero-grid">
+      <div class="course-hero-copy">
+        <h1 id="course-title">云计算原理与实践</h1>
+        <p class="course-subtitle">以在线游戏为载体</p>
+        <p class="course-lead">从在线系统的真实约束出发，系统讲解网络通信、单机并发、分布式协同与云原生部署。</p>
+        <div class="course-actions">
+          <a class="course-button course-button-primary" href="{FULL_PDF_PATH}">下载完整教材 PDF</a>
+          <a class="course-button course-button-secondary" href="{MARKDOWN_URL}">阅读 Markdown 版</a>
+        </div>
+      </div>
+      <dl class="course-meta">
+        <div><dt>课程性质</dt><dd>本科专业选修课</dd></div>
+        <div><dt>内容结构</dt><dd>前言 · 六章 · 两份附录</dd></div>
+        <div><dt>阅读方式</dt><dd>完整 PDF 与分章 PDF</dd></div>
+        <div><dt>编写单位</dt><dd>湖南大学 HNU GuoLab</dd></div>
+      </dl>
+    </div>
+  </section>
+
+  <section class="course-section" aria-labelledby="chapter-heading">
+    <header class="course-section-heading">
+      <span class="course-section-label">COURSE READER</span>
+      <h2 id="chapter-heading">分章阅读</h2>
+      <p>前言用于说明教材主线；第一至第六章按照课程进度组织，可直接在浏览器中打开对应 PDF。</p>
+    </header>
+    <div class="chapter-grid">
 """
-    qmd += f"👉 [⬇️ 点击此处下载或全屏查看最新版 PDF](chapters/{BOOK_FILE_STEM}_全书.pdf)\n"
-    qmd += """:::
 
-<br>
-
-### 📖 分章在线阅读
-
-*无需下载完整大文件，点击下方区块即可在浏览器中极速在线阅读：*
-
-::: {.grid .mt-3}
-
-::: {.g-col-12 .g-col-md-6}
-"""
-    qmd += f"[📑 目录在线阅读](chapters/{BOOK_FILE_STEM}_目录.pdf)"
-    qmd += "{.btn .btn-outline-dark .w-100 .text-start .shadow-sm}\n:::\n"
+    appendix_cards = []
     for ch in chapters:
-        key, title = ch["key"], ch["title"]
-        is_intro = "intro" in key.lower()
-        
-        # 补齐关键的 .btn 类名，确保 Bootstrap 按钮外框生效
-        btn_class = ".btn .btn-outline-dark" if is_intro else ".btn .btn-outline-primary"
-        col_class = ".g-col-12 .g-col-md-6" if is_intro else ".g-col-12"
-        icon = "💡 " if is_intro else "📖 "
-        
-        qmd += f"""
-::: {{{col_class}}}
-[{icon}{title}](chapters/chapter_{key}.pdf){{{btn_class} .w-100 .text-start .shadow-sm}}
-:::
+        key = ch["key"]
+        title = html.escape(ch["title"])
+        key_lower = key.lower()
+        if "appendix" in key_lower:
+            appendix_cards.append(ch)
+            continue
+        if "intro" in key_lower:
+            index_label = "导读"
+            meta = "前言"
+        else:
+            num_match = re.search(r'\d+', key)
+            index_label = f"{int(num_match.group(0)):02d}" if num_match else "章节"
+            meta = "课程章节"
+        qmd += f"""      <a class="chapter-card" href="chapters/chapter_{key}.pdf">
+        <span class="chapter-index">{index_label}</span>
+        <span class="chapter-copy"><strong>{title}</strong><small>{meta} · PDF</small></span>
+        <span class="chapter-arrow" aria-hidden="true">→</span>
+      </a>
 """
 
-    qmd += "\n:::\n"
-    qmd += """
+    qmd += """    </div>
+  </section>
+"""
 
-## 编者信息
+    if appendix_cards:
+        qmd += """  <section class="course-section course-section-compact" aria-labelledby="appendix-heading">
+    <header class="course-section-heading">
+      <span class="course-section-label">SUPPLEMENTARY MATERIAL</span>
+      <h2 id="appendix-heading">附录</h2>
+    </header>
+    <div class="chapter-grid chapter-grid-appendix">
+"""
+        for ch in appendix_cards:
+            key = ch["key"]
+            title = html.escape(ch["title"])
+            letter = key.replace("Appendix", "").replace("appendix", "") or "附录"
+            qmd += f"""      <a class="chapter-card" href="chapters/chapter_{key}.pdf">
+        <span class="chapter-index">{html.escape(letter)}</span>
+        <span class="chapter-copy"><strong>{title}</strong><small>补充材料 · PDF</small></span>
+        <span class="chapter-arrow" aria-hidden="true">→</span>
+      </a>
+"""
+        qmd += """    </div>
+  </section>
+"""
 
-- **核心编者与架构设计：** [陈果](https://grzy.hnu.edu.cn/site/index/chenguo)、徐方林、胡文举、庞海鑫、谢先衍、贺臻、张道平
-- **所属单位：** 湖南大学 HNU GuoLab
-- **联系邮箱：** `guochen@hnu.edu.cn`、`xfl825@hnu.edu.cn`、`ashionial@hnu.edu.cn`
-
-## 版权与使用说明
-
-Copyright © 2026 GuoLab. All Rights Reserved.
-
-本项目中的文档、示例代码和架构图表均受版权保护。公开内容可用于个人学习、学术研究和非商业教育实践；未经书面许可，不得用于商业产品、付费课程、培训项目或商业出版物。完整条款请参阅 [LICENSE]("""
-    qmd += LICENSE_URL + ")。\n"
+    qmd += f"""  <section class="course-information" aria-label="教材与版权信息">
+    <div>
+      <span class="course-section-label">ABOUT THE BOOK</span>
+      <h2>教材说明</h2>
+      <p>教材以在线游戏为贯穿案例，但所讨论的规模、状态、故障和资源问题同样适用于在线协作、电商平台和大模型服务。</p>
+    </div>
+    <div>
+      <span class="course-section-label">EDITORIAL TEAM</span>
+      <h2>编写团队</h2>
+      <p>核心编者与架构设计：陈果、徐方林、胡文举、庞海鑫、谢先衍、贺臻、张道平。</p>
+      <p><a href="{LICENSE_URL}">版权与使用说明</a></p>
+    </div>
+  </section>
+</div>
+"""
 
     with open("index.qmd", "w", encoding="utf-8") as f:
         f.write(qmd)

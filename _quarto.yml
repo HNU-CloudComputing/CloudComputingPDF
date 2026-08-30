@@ -1,13 +1,31 @@
 project:
-  type: book
+  type: website
 
-book:
-  title: "《云计算原理与实践：以在线游戏为载体》"
-  author: "GuoLab 成员"
-  chapters:
-    - index.qmd
+website:
+  title: "云计算原理与实践"
+  search: false
+  navbar:
+    pinned: true
+    left:
+      - text: "PDF 教材"
+        href: index.qmd
+    right:
+      - text: "课程主页"
+        href: https://hnu-cloudcomputing.github.io/cloudcompute-pages/
+      - text: "Markdown 版"
+        href: https://hnu-cloudcomputing.github.io/CloudComputingMarkdown/
+      - text: "课程课件"
+        href: https://github.com/HNU-CloudComputing/CloudComputingCoursePPT
+  page-footer:
+    left: "Copyright © 2026 GuoLab. All Rights Reserved."
+    right: "湖南大学 HNU GuoLab"
 
 format:
   html:
-    theme: cosmo
+    theme:
+      - litera
+      - theme.scss
     toc: false
+    page-layout: custom
+    smooth-scroll: true
+    link-external-newwindow: true

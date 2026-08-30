@@ -4,6 +4,9 @@ import re
 CCBOOK_PATH = "CCBook"
 MAIN_TEX = os.path.join(CCBOOK_PATH, "main.tex")
 TITLE_PATTERN = re.compile(r'\\(?:chapter|section)\*?\{([^}]+)\}')
+BOOK_TITLE = "云计算原理与实践：以在线游戏为载体"
+BOOK_FILE_STEM = BOOK_TITLE
+LICENSE_URL = "https://github.com/HNU-CloudComputing/CloudComputingPDF/blob/main/LICENSE"
 
 def extract_chapters():
     with open(MAIN_TEX, "r", encoding="utf-8") as f:
@@ -37,14 +40,14 @@ def extract_chapters():
     return chapters
 
 def generate_qmd(chapters):
-    qmd = """# 踏上云端之旅 {.unnumbered}
-
-这是由 **GuoLab** 成员倾力编写的教科书。由于高质量排版的需要，目前主要以高保真 PDF 形式呈现。
+    qmd = f"# {BOOK_TITLE} {{.unnumbered}}\n\n"
+    qmd += """这是由 **GuoLab** 成员倾力编写的教科书。由于高质量排版的需要，目前主要以高保真 PDF 形式呈现。
 
 ::: {.callout-note appearance="simple" icon="false"}
 ## 🚀 离线阅读
-👉 [⬇️ 点击此处下载或全屏查看最新版 PDF](chapters/云计算技术实践_全书.pdf)
-:::
+"""
+    qmd += f"👉 [⬇️ 点击此处下载或全屏查看最新版 PDF](chapters/{BOOK_FILE_STEM}_全书.pdf)\n"
+    qmd += """:::
 
 <br>
 
@@ -55,9 +58,9 @@ def generate_qmd(chapters):
 ::: {.grid .mt-3}
 
 ::: {.g-col-12 .g-col-md-6}
-[📑 目录在线阅读](chapters/云计算技术实践_目录.pdf){.btn .btn-outline-dark .w-100 .text-start .shadow-sm}
-:::
 """
+    qmd += f"[📑 目录在线阅读](chapters/{BOOK_FILE_STEM}_目录.pdf)"
+    qmd += "{.btn .btn-outline-dark .w-100 .text-start .shadow-sm}\n:::\n"
     for ch in chapters:
         key, title = ch["key"], ch["title"]
         is_intro = "intro" in key.lower()
@@ -74,6 +77,20 @@ def generate_qmd(chapters):
 """
 
     qmd += "\n:::\n"
+    qmd += """
+
+## 编者信息
+
+- **核心编者与架构设计：** [陈果](https://grzy.hnu.edu.cn/site/index/chenguo)、徐方林、胡文举、庞海鑫、谢先衍、贺臻、张道平
+- **所属单位：** 湖南大学 HNU GuoLab
+- **联系邮箱：** `guochen@hnu.edu.cn`、`xfl825@hnu.edu.cn`、`ashionial@hnu.edu.cn`
+
+## 版权与使用说明
+
+Copyright © 2026 GuoLab. All Rights Reserved.
+
+本项目中的文档、示例代码和架构图表均受版权保护。公开内容可用于个人学习、学术研究和非商业教育实践；未经书面许可，不得用于商业产品、付费课程、培训项目或商业出版物。完整条款请参阅 [LICENSE]("""
+    qmd += LICENSE_URL + ")。\n"
 
     with open("index.qmd", "w", encoding="utf-8") as f:
         f.write(qmd)

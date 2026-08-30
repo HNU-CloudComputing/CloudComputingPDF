@@ -2,7 +2,7 @@ project:
   type: book
 
 book:
-  title: "《云端创世：从一行代码到游戏纪元》"
+  title: "《云计算原理与实践：以在线游戏为载体》"
   author: "GuoLab 成员"
   chapters:
     - index.qmd
